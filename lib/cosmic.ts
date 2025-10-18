@@ -31,8 +31,15 @@ export async function getPhotos(): Promise<CosmicMedia[]> {
 // Upload a single photo
 export async function uploadPhoto(file: File): Promise<CosmicMedia> {
   try {
+    // Changed: Convert File to Buffer for Node.js environment
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    
     const response = await cosmic.media.insertOne({
-      media: file,
+      media: {
+        buffer: buffer,
+        originalname: file.name
+      }
     })
     
     return response.media
