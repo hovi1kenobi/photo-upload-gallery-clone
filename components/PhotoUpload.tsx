@@ -9,27 +9,8 @@ export default function PhotoUpload({ onUploadSuccess }: PhotoUploadProps) {
   const [uploadFiles, setUploadFiles] = useState<UploadFile[]>([])
   const [isUploading, setIsUploading] = useState(false)
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const newFiles: UploadFile[] = acceptedFiles.map(file => ({
-      file,
-      progress: 0,
-      status: 'uploading',
-      id: Math.random().toString(36).substr(2, 9),
-    }))
-
-    setUploadFiles(prev => [...prev, ...newFiles])
-    uploadFiles(newFiles)
-  }, [])
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp'],
-    },
-    multiple: true,
-  })
-
-  const uploadFiles = async (files: UploadFile[]) => {
+  // Changed: Renamed function to avoid variable name conflict
+  const processUploadFiles = async (files: UploadFile[]) => {
     setIsUploading(true)
 
     for (const uploadFile of files) {
@@ -92,6 +73,27 @@ export default function PhotoUpload({ onUploadSuccess }: PhotoUploadProps) {
 
     setIsUploading(false)
   }
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const newFiles: UploadFile[] = acceptedFiles.map(file => ({
+      file,
+      progress: 0,
+      status: 'uploading',
+      id: Math.random().toString(36).substr(2, 9),
+    }))
+
+    setUploadFiles(prev => [...prev, ...newFiles])
+    // Changed: Call the renamed function
+    processUploadFiles(newFiles)
+  }, [])
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp'],
+    },
+    multiple: true,
+  })
 
   const removeFile = (id: string) => {
     setUploadFiles(prev => prev.filter(f => f.id !== id))

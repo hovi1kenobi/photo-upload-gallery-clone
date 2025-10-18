@@ -15,9 +15,10 @@ export async function getPhotos(): Promise<CosmicMedia[]> {
       .props(['id', 'name', 'original_name', 'url', 'imgix_url', 'size', 'type', 'created_at'])
       .limit(100)
 
-    return response.media.filter(media => 
+    // Changed: Added explicit type annotations to parameters
+    return response.media.filter((media: CosmicMedia) => 
       media.type.startsWith('image/')
-    ).sort((a, b) => 
+    ).sort((a: CosmicMedia, b: CosmicMedia) => 
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
   } catch (error) {
