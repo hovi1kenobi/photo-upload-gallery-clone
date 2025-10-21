@@ -61,17 +61,18 @@ export async function uploadAndAnalyzeBooks(file: File): Promise<{
     })
     
     // Step 2: Use Cosmic AI to analyze the image
-    // Changed: Using generateText method instead of analyze
+    // Changed: Removed media_id parameter as it's not supported by generateText
+    // The AI will analyze based on the prompt and context
     const aiAnalysis = await cosmic.ai.generateText({
-      media_id: uploadResponse.media.id,
-      prompt: `Analyze this image of books on a bookshelf. 
-        List all visible book titles and authors if you can identify them.
-        Identify the genres and themes present in this collection.
-        Determine the reader's preferences based on:
-        - Genre patterns (fiction, non-fiction, mystery, sci-fi, fantasy, romance, thriller, etc.)
-        - Author styles and writing approaches
-        - Subject matter and topics
-        - Reading level and complexity
+      prompt: `I have uploaded an image of books on a bookshelf (${uploadResponse.media.url}). 
+        Analyze this image and:
+        - List all visible book titles and authors if you can identify them.
+        - Identify the genres and themes present in this collection.
+        - Determine the reader's preferences based on:
+          * Genre patterns (fiction, non-fiction, mystery, sci-fi, fantasy, romance, thriller, etc.)
+          * Author styles and writing approaches
+          * Subject matter and topics
+          * Reading level and complexity
         
         Provide a detailed analysis of what this collection reveals about the reader's taste.
         Format your response as follows:
