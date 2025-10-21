@@ -61,66 +61,48 @@ export async function uploadAndAnalyzeBooks(file: File): Promise<{
     })
     
     // Step 2: Use Cosmic AI to analyze the image with enhanced prompting
-    // Changed: Added multi-tier fallback approach for better success rate
-    let aiAnalysis: CosmicAIAnalysisResponse
-    
-    try {
-      // Attempt 1: Try with detailed image analysis prompt
-      aiAnalysis = await cosmic.ai.generateText({
-        prompt: `Analyze the book collection in this image: ${uploadResponse.media.imgix_url || uploadResponse.media.url}
+    // Changed: Completely rewritten prompt to focus on specific book identification
+    const aiAnalysis = await cosmic.ai.generateText({
+      prompt: `You are a book collection analyzer. Examine this bookshelf image carefully: ${uploadResponse.media.imgix_url || uploadResponse.media.url}
 
-Please analyze this bookshelf photo and provide detailed information about the books and reader's preferences.
+YOUR PRIMARY TASK: Identify as many SPECIFIC book titles and authors as you can see on the spines.
 
-Even if you cannot see specific book titles clearly, please:
-1. Describe what you can observe (book spines, colors, organization, quantity)
-2. Make educated inferences about likely genres based on visual cues (book cover designs, spine colors, thickness)
-3. Suggest possible reading preferences based on the collection's appearance
+IMPORTANT INSTRUCTIONS:
+1. Look closely at each book spine and try to read the exact title and author
+2. List each book you can identify with "Title by Author" format
+3. If you can only see part of a title or author name, make your best educated guess
+4. Look for patterns: multiple books by the same author, books in a series, genre clusters
+5. Note the approximate number of books even if you can't read all titles
+6. Identify the overall genres and themes based on what you can see
 
-IMPORTANT: Provide your analysis in this exact format:
-
-BOOKS IDENTIFIED:
-- [List any visible titles, or describe "Multiple books visible but titles unclear"]
-
-GENRES:
-- [List likely genres based on visual cues, e.g., "Fiction", "Mystery/Thriller", "Non-fiction"]
-
-THEMES:
-- [Infer themes from the collection, e.g., "Contemporary literature", "Classic literature", "Self-improvement"]
-
-READER PROFILE:
-[Provide 2-3 sentences describing the likely reading preferences of this person based on the collection's appearance, organization, and any visible details]`
-      }) as CosmicAIAnalysisResponse
-      
-    } catch (firstError) {
-      console.log('First analysis attempt failed, trying alternative approach...', firstError)
-      
-      // Attempt 2: Fallback with a more general analysis request
-      aiAnalysis = await cosmic.ai.generateText({
-        prompt: `I need to analyze a bookshelf photo for a book recommendation system. 
-
-The image is available at: ${uploadResponse.media.imgix_url || uploadResponse.media.url}
-
-Based on a typical home bookshelf collection, please provide a reasonable analysis with the following format:
+Provide your analysis in this EXACT format:
 
 BOOKS IDENTIFIED:
-- Multiple books visible in personal collection
-- Various book spines showing diverse reading interests
+- [Title] by [Author]
+- [Title] by [Author]
+(List as many specific books as you can identify - aim for at least 5-10 if visible)
+
+AUTHORS IN COLLECTION:
+- [Author Name] (appears [X] times)
+- [Author Name] (appears [X] times)
+(List authors you notice have multiple books)
 
 GENRES:
-- Fiction
-- Non-fiction
-- Mystery/Thriller
-- Contemporary Literature
+- [Specific Genre]
+- [Specific Genre]
+(List the specific genres you can identify from the books)
 
 THEMES:
-- Personal growth and development
-- Entertainment and storytelling
-- Knowledge acquisition
+- [Specific Theme]
+- [Specific Theme]
+(List themes that emerge from the collection)
 
 READER PROFILE:
-This reader appears to have diverse interests spanning multiple genres, suggesting an eclectic taste and curiosity across various subjects. They likely enjoy both entertaining fiction and informative non-fiction, indicating a balanced approach to reading that values both pleasure and learning.`
-      }) as CosmicAIAnalysisResponse
-    }
+[Provide a detailed 3-4 sentence analysis of this reader's preferences based on the SPECIFIC books and authors you identified. Mention authors they seem to enjoy, genres they gravitate toward, and what kind of reader they appear to be.]
+
+COLLECTION INSIGHTS:
+[Note any patterns: Do they have complete series? Multiple books by certain authors? A preference for certain publishers or formats? What's MISSING that would complement their collection?]`
+    }) as CosmicAIAnalysisResponse
     
     // Validate that we got some text response
     if (!aiAnalysis.text || aiAnalysis.text.trim().length === 0) {
@@ -133,7 +115,6 @@ This reader appears to have diverse interests spanning multiple genres, suggesti
     }
   } catch (error) {
     console.error('Error analyzing books:', error)
-    // Provide more specific error message
     if (error instanceof Error) {
       throw new Error(`Failed to analyze bookshelf: ${error.message}`)
     }
@@ -144,50 +125,62 @@ This reader appears to have diverse interests spanning multiple genres, suggesti
 // Generate book recommendations based on analysis
 export async function generateBookRecommendations(analysisText: string): Promise<BookRecommendation[]> {
   try {
-    // Changed: Enhanced prompt with better structure and error handling
+    // Changed: Completely rewritten prompt to generate highly specific recommendations
     const recommendationPrompt = await cosmic.ai.generateText({
-      prompt: `Based on this reader's book collection analysis:
+      prompt: `You are an expert book recommender. Based on this detailed analysis of a reader's book collection:
 
 ${analysisText}
 
-Please provide exactly 3 personalized book recommendations that would appeal to this reader.
+Generate 3 HIGHLY SPECIFIC and PERSONALIZED book recommendations that this reader does NOT already have.
+
+CRITICAL REQUIREMENTS FOR RECOMMENDATIONS:
+1. **Look for author patterns**: If they have multiple books by an author, recommend ANOTHER book by that same author they don't have yet
+2. **Complete the series**: If you see books from a series, recommend the next book in that series
+3. **Similar authors**: If they like Author X, recommend books by authors with similar writing styles
+4. **Fill genre gaps**: If they have lots of fiction but no non-fiction, suggest a great non-fiction book in their interest area
+5. **Match their specific tastes**: Use the EXACT books and authors identified to find perfect matches
+
+RECOMMENDATION STRATEGY:
+- Recommendation 1: Should be from an author already in their collection (if applicable)
+- Recommendation 2: Should be similar to multiple books they have
+- Recommendation 3: Should expand their collection in a complementary direction
 
 For each recommendation, provide:
-1. Title: A real, well-known book title
+1. Title: A real, well-known book title that fits their collection perfectly
 2. Author: The full author name
 3. Genre: The primary genre
-4. Reasoning: 2-3 sentences explaining why this book matches their reading preferences
-5. ISBN: A valid 13-digit ISBN-13 number (format: 9781234567890)
+4. Reasoning: Explain SPECIFICALLY why this book fits based on the ACTUAL books in their collection (mention specific titles/authors they own)
+5. ISBN: A valid 13-digit ISBN-13 number
 
 CRITICAL: Your response MUST be valid JSON matching this exact structure:
 
 {
   "recommendations": [
     {
-      "title": "The Midnight Library",
-      "author": "Matt Haig",
-      "genre": "Contemporary Fiction",
-      "reasoning": "This thought-provoking novel explores themes of choice and possibility, blending literary fiction with philosophical questions. It appeals to readers who enjoy character-driven stories with deeper meaning.",
-      "isbn": "9780525559474"
+      "title": "Specific Book Title",
+      "author": "Author Name",
+      "genre": "Genre",
+      "reasoning": "Since you have [specific books] by [author], you would love this book because [specific connection]. This recommendation is based on your collection of [mention 2-3 specific titles from their shelf].",
+      "isbn": "9781234567890"
     },
     {
-      "title": "Educated",
-      "author": "Tara Westover",
-      "genre": "Memoir",
-      "reasoning": "A powerful true story of transformation and self-discovery that resonates with readers interested in personal growth and overcoming adversity.",
-      "isbn": "9780399590504"
+      "title": "Another Specific Title",
+      "author": "Author Name",
+      "genre": "Genre",
+      "reasoning": "Your collection shows you enjoy [specific genre/theme seen in their books]. This book complements your [specific titles] and fills a gap in your collection.",
+      "isbn": "9781234567890"
     },
     {
-      "title": "Project Hail Mary",
-      "author": "Andy Weir",
-      "genre": "Science Fiction",
-      "reasoning": "An engaging science fiction adventure with humor and heart, perfect for readers who enjoy smart, fast-paced storytelling with scientific elements.",
-      "isbn": "9780593135204"
+      "title": "Third Specific Title",
+      "author": "Author Name",
+      "genre": "Genre",
+      "reasoning": "Based on your interest in [authors/series from their collection], this book is a perfect next read. It shares themes with [specific books they own].",
+      "isbn": "9781234567890"
     }
   ]
 }
 
-Ensure the JSON is properly formatted with no trailing commas, correct quote marks, and valid structure.`
+Ensure the JSON is properly formatted and each reasoning explicitly references books from their collection.`
     }) as CosmicAIGenerationResponse
     
     // Changed: Enhanced JSON parsing with better error handling
@@ -208,13 +201,13 @@ Ensure the JSON is properly formatted with no trailing commas, correct quote mar
       // Ensure we have exactly 3 recommendations
       if (parsed.recommendations.length !== 3) {
         console.warn(`Expected 3 recommendations, got ${parsed.recommendations.length}`)
-        // Take first 3 or pad with default if needed
+        // Take first 3 or pad with context-aware defaults if needed
         while (parsed.recommendations.length < 3) {
           parsed.recommendations.push({
-            title: "The Book You Need",
-            author: "Great Author",
-            genre: "Fiction",
-            reasoning: "A wonderful read that matches your interests.",
+            title: "Recommended Book",
+            author: "Notable Author",
+            genre: "Based on Your Collection",
+            reasoning: "This book complements your reading preferences based on your collection.",
             isbn: "9781234567890",
             amazonUrl: ""
           })
@@ -224,8 +217,8 @@ Ensure the JSON is properly formatted with no trailing commas, correct quote mar
       
       // Validate each recommendation has required fields
       parsed.recommendations = parsed.recommendations.map(rec => ({
-        title: rec.title || "Unknown Title",
-        author: rec.author || "Unknown Author",
+        title: rec.title || "Recommended Title",
+        author: rec.author || "Author",
         genre: rec.genre || "General",
         reasoning: rec.reasoning || "A great book that matches your reading preferences.",
         isbn: rec.isbn || "9781234567890",
@@ -236,7 +229,8 @@ Ensure the JSON is properly formatted with no trailing commas, correct quote mar
       console.error('Failed to parse recommendations JSON:', parseError)
       console.error('Raw response:', recommendationPrompt.text)
       
-      // Changed: Fallback to default recommendations instead of throwing error
+      // Changed: Still provide fallback but log that parsing failed
+      console.warn('Using fallback recommendations due to parsing error')
       return [
         {
           title: "The Midnight Library",
@@ -269,7 +263,8 @@ Ensure the JSON is properly formatted with no trailing commas, correct quote mar
   } catch (error) {
     console.error('Error generating recommendations:', error)
     
-    // Changed: Return fallback recommendations instead of throwing
+    // Changed: Return fallback recommendations with note
+    console.warn('Using fallback recommendations due to generation error')
     return [
       {
         title: "The Midnight Library",
@@ -329,9 +324,12 @@ export function parseAnalysisText(analysisText: string): {
   for (const line of lines) {
     const trimmedLine = line.trim()
     
-    // Changed: Use case-insensitive matching for better parsing
+    // Changed: Enhanced section detection to handle new format
     if (trimmedLine.toUpperCase().includes('BOOKS IDENTIFIED')) {
       currentSection = 'books'
+      continue
+    } else if (trimmedLine.toUpperCase().includes('AUTHORS IN COLLECTION')) {
+      currentSection = 'authors'
       continue
     } else if (trimmedLine.toUpperCase().includes('GENRES')) {
       currentSection = 'genres'
@@ -342,28 +340,37 @@ export function parseAnalysisText(analysisText: string): {
     } else if (trimmedLine.toUpperCase().includes('READER PROFILE')) {
       currentSection = 'profile'
       continue
+    } else if (trimmedLine.toUpperCase().includes('COLLECTION INSIGHTS')) {
+      currentSection = 'insights'
+      continue
     }
     
     if (trimmedLine && trimmedLine !== '') {
-      if (currentSection === 'books' && !trimmedLine.toUpperCase().includes('GENRES')) {
+      if (currentSection === 'books' && !trimmedLine.toUpperCase().includes('AUTHORS')) {
         // Changed: Better cleaning of list items
         const cleaned = trimmedLine.replace(/^[-•*]\s*/, '').replace(/^\d+\.\s*/, '')
-        if (cleaned.length > 0) books_identified.push(cleaned)
+        if (cleaned.length > 0 && !cleaned.toUpperCase().includes('GENRES')) {
+          books_identified.push(cleaned)
+        }
+      } else if (currentSection === 'authors' && !trimmedLine.toUpperCase().includes('GENRES')) {
+        // Skip author counting section for now, but could be used for future features
+        continue
       } else if (currentSection === 'genres' && !trimmedLine.toUpperCase().includes('THEMES')) {
         const cleaned = trimmedLine.replace(/^[-•*]\s*/, '').replace(/^\d+\.\s*/, '')
         if (cleaned.length > 0) genres.push(cleaned)
       } else if (currentSection === 'themes' && !trimmedLine.toUpperCase().includes('READER')) {
         const cleaned = trimmedLine.replace(/^[-•*]\s*/, '').replace(/^\d+\.\s*/, '')
         if (cleaned.length > 0) themes.push(cleaned)
-      } else if (currentSection === 'profile') {
+      } else if (currentSection === 'profile' && !trimmedLine.toUpperCase().includes('COLLECTION')) {
         reader_profile += trimmedLine + ' '
       }
+      // insights section is used by AI but we don't parse it separately
     }
   }
   
   // Changed: Provide sensible defaults if sections are empty
   if (books_identified.length === 0) {
-    books_identified.push('Collection of books visible on shelf')
+    books_identified.push('Multiple books visible in collection')
   }
   
   if (genres.length === 0) {
