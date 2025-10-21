@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback } from 'react'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
-import type { PhotoModalProps } from '@/types'
+import type { PhotoModalProps, CosmicMedia } from '@/types'
 
 export default function PhotoModal({
   photos,
@@ -96,7 +96,8 @@ export default function PhotoModal({
 
         {/* Thumbnail strip */}
         <div className="thumbnail-strip hide-scrollbar">
-          {photos.map((photo, index) => (
+          {/* Changed: Added explicit type annotations for parameters */}
+          {photos.map((photo: CosmicMedia, index: number) => (
             <img
               key={photo.id}
               src={`${photo.imgix_url}?w=128&h=128&fit=crop&auto=format,compress`}

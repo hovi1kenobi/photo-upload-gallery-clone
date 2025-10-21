@@ -61,6 +61,34 @@ export interface RecommendationsListProps {
   recommendations: BookRecommendation[];
 }
 
+// Photo gallery types - Changed: Added missing type definitions
+export interface AccessResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface AccessFormProps {
+  onAccessGranted: () => void;
+}
+
+export interface PhotoGridProps {
+  photos: CosmicMedia[];
+  onPhotoClick: (index: number) => void;
+}
+
+export interface PhotoModalProps {
+  photos: CosmicMedia[];
+  currentIndex: number;
+  isOpen: boolean;
+  onClose: () => void;
+  onNavigate: (direction: 'prev' | 'next') => void;
+  onThumbnailClick: (index: number) => void;
+}
+
+export interface PhotoUploadProps {
+  onUploadSuccess: (photo: CosmicMedia) => void;
+}
+
 // Upload state types
 export interface UploadFile {
   file: File;

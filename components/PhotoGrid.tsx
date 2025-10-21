@@ -1,6 +1,6 @@
 'use client'
 
-import type { PhotoGridProps } from '@/types'
+import type { PhotoGridProps, CosmicMedia } from '@/types'
 
 export default function PhotoGrid({ photos, onPhotoClick }: PhotoGridProps) {
   if (!photos || photos.length === 0) {
@@ -9,7 +9,8 @@ export default function PhotoGrid({ photos, onPhotoClick }: PhotoGridProps) {
 
   return (
     <div className="photo-grid">
-      {photos.map((photo, index) => (
+      {/* Changed: Added explicit type annotations for parameters */}
+      {photos.map((photo: CosmicMedia, index: number) => (
         <div
           key={photo.id}
           className="photo-card"

@@ -7,6 +7,42 @@ export const cosmic = createBucketClient({
   writeKey: process.env.COSMIC_WRITE_KEY as string,
 })
 
+// Changed: Added getPhotos function to fetch all photos from media library
+export async function getPhotos(): Promise<CosmicMedia[]> {
+  try {
+    const response = await cosmic.media.find({
+      folder: 'photos'
+    })
+    return response.media || []
+  } catch (error) {
+    if (hasStatus(error) && error.status === 404) {
+      return []
+    }
+    throw new Error('Failed to fetch photos')
+  }
+}
+
+// Changed: Added uploadPhoto function to upload a single photo
+export async function uploadPhoto(file: File): Promise<CosmicMedia> {
+  try {
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    
+    const uploadResponse = await cosmic.media.insertOne({
+      media: {
+        buffer: buffer,
+        originalname: file.name
+      },
+      folder: 'photos'
+    })
+    
+    return uploadResponse.media
+  } catch (error) {
+    console.error('Error uploading photo:', error)
+    throw new Error('Failed to upload photo')
+  }
+}
+
 // Upload a photo and analyze it with Cosmic AI
 export async function uploadAndAnalyzeBooks(file: File): Promise<{
   photo: CosmicMedia;
@@ -25,7 +61,8 @@ export async function uploadAndAnalyzeBooks(file: File): Promise<{
     })
     
     // Step 2: Use Cosmic AI to analyze the image
-    const aiAnalysis = await cosmic.ai.analyze({
+    // Changed: Using generateText method instead of analyze
+    const aiAnalysis = await cosmic.ai.generateText({
       media_id: uploadResponse.media.id,
       prompt: `Analyze this image of books on a bookshelf. 
         List all visible book titles and authors if you can identify them.
@@ -65,7 +102,8 @@ export async function uploadAndAnalyzeBooks(file: File): Promise<{
 // Generate book recommendations based on analysis
 export async function generateBookRecommendations(analysisText: string): Promise<BookRecommendation[]> {
   try {
-    const recommendationPrompt = await cosmic.ai.generate({
+    // Changed: Using generateText method instead of generate
+    const recommendationPrompt = await cosmic.ai.generateText({
       prompt: `Based on this reader's book collection analysis:
         
         ${analysisText}
