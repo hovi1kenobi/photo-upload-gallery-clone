@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Use ACCESS_CODE environment variable
     const expectedAccessCode = process.env.ACCESS_CODE
 
     if (!expectedAccessCode) {
