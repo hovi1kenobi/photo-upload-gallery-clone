@@ -25,6 +25,12 @@ export interface CosmicMediaUploadResponse {
   media: CosmicMedia;
 }
 
+// Access verification response type
+export interface AccessResponse {
+  success: boolean;
+  message: string;
+}
+
 // Component prop types
 export interface PhotoGridProps {
   photos: CosmicMedia[];
@@ -42,6 +48,10 @@ export interface PhotoModalProps {
 
 export interface PhotoUploadProps {
   onUploadSuccess: (photo: CosmicMedia) => void;
+}
+
+export interface AccessFormProps {
+  onAccessGranted: () => void;
 }
 
 // Upload state types
