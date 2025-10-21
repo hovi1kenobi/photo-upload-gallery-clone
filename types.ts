@@ -40,10 +40,6 @@ export interface PhotoModalProps {
   onThumbnailClick: (index: number) => void;
 }
 
-export interface AccessFormProps {
-  onAccessGranted: () => void;
-}
-
 export interface PhotoUploadProps {
   onUploadSuccess: (photo: CosmicMedia) => void;
 }
@@ -54,12 +50,6 @@ export interface UploadFile {
   progress: number;
   status: 'uploading' | 'success' | 'error';
   id: string;
-}
-
-// Access verification response
-export interface AccessResponse {
-  success: boolean;
-  message: string;
 }
 
 // Type guards for runtime validation
