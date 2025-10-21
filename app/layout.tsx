@@ -5,8 +5,8 @@ import CosmicBadge from '@/components/CosmicBadge'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
-  title: 'Photo Upload Gallery',
-  description: 'Secure photo upload and gallery website for private events and gatherings',
+  title: 'AI Book Recommendations | Powered by Cosmic',
+  description: 'Upload a photo of your bookshelf and get personalized book recommendations powered by AI',
 }
 
 export default function RootLayout({

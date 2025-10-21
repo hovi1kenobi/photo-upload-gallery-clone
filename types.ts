@@ -25,33 +25,40 @@ export interface CosmicMediaUploadResponse {
   media: CosmicMedia;
 }
 
-// Access verification response type
-export interface AccessResponse {
+// Book recommendation types
+export interface BookAnalysis {
+  photo: CosmicMedia;
+  books_identified: string[];
+  genres: string[];
+  themes: string[];
+  reader_profile: string;
+  raw_analysis: string;
+}
+
+export interface BookRecommendation {
+  title: string;
+  author: string;
+  genre: string;
+  reasoning: string;
+  isbn: string;
+  amazonUrl: string;
+}
+
+export interface RecommendationResponse {
   success: boolean;
-  message: string;
+  analysis?: BookAnalysis;
+  recommendations?: BookRecommendation[];
+  error?: string;
 }
 
 // Component prop types
-export interface PhotoGridProps {
-  photos: CosmicMedia[];
-  onPhotoClick: (index: number) => void;
+export interface BookUploadProps {
+  onAnalysisComplete: (analysis: BookAnalysis, recommendations: BookRecommendation[]) => void;
 }
 
-export interface PhotoModalProps {
-  photos: CosmicMedia[];
-  currentIndex: number;
-  isOpen: boolean;
-  onClose: () => void;
-  onNavigate: (direction: 'prev' | 'next') => void;
-  onThumbnailClick: (index: number) => void;
-}
-
-export interface PhotoUploadProps {
-  onUploadSuccess: (photo: CosmicMedia) => void;
-}
-
-export interface AccessFormProps {
-  onAccessGranted: () => void;
+export interface RecommendationsListProps {
+  analysis: BookAnalysis | null;
+  recommendations: BookRecommendation[];
 }
 
 // Upload state types
@@ -69,4 +76,23 @@ export function isCosmicMedia(obj: any): obj is CosmicMedia {
 
 export function isCosmicMediaArray(arr: any): arr is CosmicMedia[] {
   return Array.isArray(arr) && arr.every(isCosmicMedia);
+}
+
+// Cosmic AI response types
+export interface CosmicAIAnalysisResponse {
+  text: string;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
+
+export interface CosmicAIGenerationResponse {
+  text: string;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
 }
