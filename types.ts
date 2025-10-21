@@ -53,12 +53,14 @@ export interface RecommendationResponse {
 
 // Component prop types
 export interface BookUploadProps {
-  onAnalysisComplete: (analysis: BookAnalysis, recommendations: BookRecommendation[]) => void;
+  onAnalysisComplete: (analysis: BookAnalysis | null, recommendations: BookRecommendation[]) => void;
 }
 
+// Changed: Added timestamp prop to show when analysis was performed
 export interface RecommendationsListProps {
   analysis: BookAnalysis | null;
   recommendations: BookRecommendation[];
+  timestamp?: string;
 }
 
 // Photo gallery types - Changed: Added missing type definitions

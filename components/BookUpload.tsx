@@ -17,6 +17,8 @@ export default function BookUpload({ onAnalysisComplete }: BookUploadProps) {
     setIsAnalyzing(true)
     setError(null)
     setUploadProgress(0)
+    // Changed: Clear previous results immediately when starting new upload
+    onAnalysisComplete(null, [])
 
     try {
       // Simulate upload progress

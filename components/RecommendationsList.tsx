@@ -1,11 +1,12 @@
 'use client'
 
-import { ExternalLink, Book, Sparkles } from 'lucide-react'
+import { ExternalLink, Book, Sparkles, Clock } from 'lucide-react'
 import type { RecommendationsListProps } from '@/types'
 
 export default function RecommendationsList({ 
   analysis, 
-  recommendations 
+  recommendations,
+  timestamp
 }: RecommendationsListProps) {
   if (!analysis || recommendations.length === 0) {
     return null
@@ -13,6 +14,16 @@ export default function RecommendationsList({
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-8 animate-fade-in">
+      {/* Changed: Added timestamp badge to show when analysis was performed */}
+      {timestamp && (
+        <div className="flex justify-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium shadow-sm">
+            <Clock className="w-4 h-4" />
+            New Analysis at {timestamp}
+          </div>
+        </div>
+      )}
+
       {/* Analysis Section */}
       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-8 rounded-xl shadow-sm border border-blue-100">
         <div className="flex items-center gap-3 mb-4">
@@ -23,6 +34,25 @@ export default function RecommendationsList({
         <p className="text-gray-700 leading-relaxed mb-6">
           {analysis.reader_profile}
         </p>
+
+        {/* Changed: Added section showing books detected in the photo */}
+        {analysis.books_identified.length > 0 && (
+          <div className="mb-4 p-4 bg-white rounded-lg border border-blue-200">
+            <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              📚 Books We Detected in Your Photo:
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {analysis.books_identified.map((book, index) => (
+                <span
+                  key={index}
+                  className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium shadow-sm"
+                >
+                  {book}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {analysis.genres.length > 0 && (
           <div className="mb-4">
@@ -59,15 +89,19 @@ export default function RecommendationsList({
 
       {/* Recommendations Section */}
       <div>
-        <h3 className="text-3xl font-bold text-gray-900 mb-6 text-center">
+        <h3 className="text-3xl font-bold text-gray-900 mb-2 text-center">
           Recommended For You
         </h3>
+        {/* Changed: Added subtitle emphasizing fresh recommendations */}
+        <p className="text-center text-gray-600 mb-6">
+          Fresh recommendations based on your latest upload
+        </p>
         
         <div className="grid md:grid-cols-3 gap-6">
           {recommendations.map((book, index) => (
             <div
               key={index}
-              className="bg-white p-6 rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-shadow duration-200"
+              className="bg-white p-6 rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-200 hover:scale-105"
             >
               <div className="mb-4">
                 <Book className="w-12 h-12 text-blue-600" />

@@ -9,10 +9,26 @@ import type { BookAnalysis, BookRecommendation } from '@/types'
 export default function HomePage() {
   const [analysis, setAnalysis] = useState<BookAnalysis | null>(null)
   const [recommendations, setRecommendations] = useState<BookRecommendation[]>([])
+  // Changed: Added uploadKey to force component re-renders on new uploads
+  const [uploadKey, setUploadKey] = useState(0)
+  // Changed: Added timestamp to show when analysis was performed
+  const [analysisTimestamp, setAnalysisTimestamp] = useState<string>('')
 
-  const handleAnalysisComplete = (newAnalysis: BookAnalysis, newRecommendations: BookRecommendation[]) => {
+  const handleAnalysisComplete = (newAnalysis: BookAnalysis | null, newRecommendations: BookRecommendation[]) => {
+    // Changed: Set timestamp when analysis completes
+    if (newAnalysis) {
+      setAnalysisTimestamp(new Date().toLocaleTimeString())
+      // Changed: Increment key to force fresh render of recommendations
+      setUploadKey(prev => prev + 1)
+    }
     setAnalysis(newAnalysis)
     setRecommendations(newRecommendations)
+    // Changed: Scroll to top to show new results
+    if (newAnalysis) {
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }, 100)
+    }
   }
 
   return (
@@ -57,8 +73,10 @@ export default function HomePage() {
         {/* Recommendations Section */}
         {analysis && recommendations.length > 0 && (
           <RecommendationsList 
+            key={uploadKey}
             analysis={analysis} 
-            recommendations={recommendations} 
+            recommendations={recommendations}
+            timestamp={analysisTimestamp}
           />
         )}
 
