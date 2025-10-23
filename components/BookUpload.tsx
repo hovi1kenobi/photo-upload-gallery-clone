@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { BookOpen, Sparkles, Upload } from 'lucide-react'
+import { validateImageFile } from '@/lib/validators'
 import type { BookUploadProps, BookAnalysis, BookRecommendation } from '@/types'
 
 export default function BookUpload({ onAnalysisComplete }: BookUploadProps) {
@@ -13,6 +14,13 @@ export default function BookUpload({ onAnalysisComplete }: BookUploadProps) {
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0]
     if (!file) return
+
+    // Changed: Add client-side pre-validation
+    const validation = validateImageFile(file)
+    if (!validation.valid) {
+      setError(validation.error || 'Invalid file')
+      return
+    }
 
     setIsAnalyzing(true)
     setError(null)
@@ -45,10 +53,14 @@ export default function BookUpload({ onAnalysisComplete }: BookUploadProps) {
 
       const data = await response.json()
 
-      if (data.success && data.analysis && data.recommendations) {
+      if (data.success && data.analysis) {
         // Wait a moment to show 100% progress
         setTimeout(() => {
-          onAnalysisComplete(data.analysis, data.recommendations)
+          // Changed: Handle case where recommendations might be empty
+          onAnalysisComplete(data.analysis, data.recommendations || [])
+          if (data.error) {
+            setError(data.error)
+          }
         }, 500)
       } else {
         setError(data.error || 'Failed to analyze books. Please try again.')

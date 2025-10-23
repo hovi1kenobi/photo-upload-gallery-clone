@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { uploadAndAnalyzeBooks, generateBookRecommendations, parseAnalysisText, generateAmazonLink } from '@/lib/cosmic'
+import { validateImageFile } from '@/lib/validators'
 import type { RecommendationResponse, BookAnalysis } from '@/types'
 
 export async function POST(request: NextRequest) {
@@ -7,27 +8,12 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const file = formData.get('file') as File
 
-    if (!file) {
+    // Changed: Use centralized validation
+    const validation = validateImageFile(file)
+    if (!validation.valid) {
       return NextResponse.json<RecommendationResponse>({
         success: false,
-        error: 'No file provided'
-      }, { status: 400 })
-    }
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      return NextResponse.json<RecommendationResponse>({
-        success: false,
-        error: 'File must be an image'
-      }, { status: 400 })
-    }
-
-    // Validate file size (max 10MB)
-    const maxSize = 10 * 1024 * 1024
-    if (file.size > maxSize) {
-      return NextResponse.json<RecommendationResponse>({
-        success: false,
-        error: 'File size must be less than 10MB'
+        error: validation.error
       }, { status: 400 })
     }
 
@@ -37,8 +23,50 @@ export async function POST(request: NextRequest) {
     // Step 2: Parse the analysis text into structured data
     const parsedAnalysis = parseAnalysisText(analysis.text)
     
-    // Step 3: Generate book recommendations
-    const recommendations = await generateBookRecommendations(analysis.text)
+    // Step 3: Generate book recommendations with fallback support
+    let recommendations
+    try {
+      recommendations = await generateBookRecommendations(analysis.text)
+      
+      // Changed: Check if we got valid recommendations
+      if (!recommendations || recommendations.length === 0) {
+        console.warn('No recommendations generated, but analysis succeeded')
+        // Return analysis without recommendations
+        const fullAnalysis: BookAnalysis = {
+          photo,
+          books_identified: parsedAnalysis.books_identified,
+          genres: parsedAnalysis.genres,
+          themes: parsedAnalysis.themes,
+          reader_profile: parsedAnalysis.reader_profile,
+          raw_analysis: analysis.text
+        }
+        
+        return NextResponse.json<RecommendationResponse>({
+          success: true,
+          analysis: fullAnalysis,
+          recommendations: [],
+          error: 'Analysis complete, but recommendations could not be generated. Please try uploading another photo.'
+        })
+      }
+    } catch (recError) {
+      console.error('Recommendation generation failed:', recError)
+      // Changed: Partial success - return analysis without recommendations
+      const fullAnalysis: BookAnalysis = {
+        photo,
+        books_identified: parsedAnalysis.books_identified,
+        genres: parsedAnalysis.genres,
+        themes: parsedAnalysis.themes,
+        reader_profile: parsedAnalysis.reader_profile,
+        raw_analysis: analysis.text
+      }
+      
+      return NextResponse.json<RecommendationResponse>({
+        success: true,
+        analysis: fullAnalysis,
+        recommendations: [],
+        error: 'Analysis complete, but recommendations could not be generated. Please try again.'
+      })
+    }
     
     // Step 4: Add Amazon links to recommendations
     const enrichedRecommendations = recommendations.map(book => ({

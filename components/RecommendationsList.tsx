@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { ExternalLink, Book, Sparkles, Clock } from 'lucide-react'
 import type { RecommendationsListProps } from '@/types'
 
@@ -8,7 +9,25 @@ export default function RecommendationsList({
   recommendations,
   timestamp
 }: RecommendationsListProps) {
-  if (!analysis || recommendations.length === 0) {
+  // Changed: Progressive rendering state
+  const [visibleCount, setVisibleCount] = useState(0)
+
+  // Changed: Gradually reveal recommendations for better UX
+  useEffect(() => {
+    if (recommendations.length > 0 && visibleCount < recommendations.length) {
+      const timer = setTimeout(() => {
+        setVisibleCount(prev => prev + 1)
+      }, 200)
+      return () => clearTimeout(timer)
+    }
+  }, [visibleCount, recommendations.length])
+
+  // Reset visible count when recommendations change
+  useEffect(() => {
+    setVisibleCount(0)
+  }, [recommendations])
+
+  if (!analysis) {
     return null
   }
 
@@ -88,55 +107,67 @@ export default function RecommendationsList({
       </div>
 
       {/* Recommendations Section */}
-      <div>
-        <h3 className="text-3xl font-bold text-gray-900 mb-2 text-center">
-          Recommended For You
-        </h3>
-        {/* Changed: Added subtitle emphasizing fresh recommendations */}
-        <p className="text-center text-gray-600 mb-6">
-          Fresh recommendations based on your latest upload
-        </p>
-        
-        <div className="grid md:grid-cols-3 gap-6">
-          {recommendations.map((book, index) => (
-            <div
-              key={index}
-              className="bg-white p-6 rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-200 hover:scale-105"
-            >
-              <div className="mb-4">
-                <Book className="w-12 h-12 text-blue-600" />
-              </div>
-              
-              <h4 className="text-xl font-bold text-gray-900 mb-2">
-                {book.title}
-              </h4>
-              
-              <p className="text-gray-600 mb-2">
-                by {book.author}
-              </p>
-              
-              <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium mb-4">
-                {book.genre}
-              </span>
-              
-              <p className="text-sm text-gray-700 leading-relaxed mb-6">
-                {book.reasoning}
-              </p>
-              
-              <a
-                href={book.amazonUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 w-full justify-center bg-amber-500 hover:bg-amber-600 
-                           text-white px-4 py-3 rounded-lg font-medium transition-colors duration-200"
+      {recommendations.length > 0 ? (
+        <div>
+          <h3 className="text-3xl font-bold text-gray-900 mb-2 text-center">
+            Recommended For You
+          </h3>
+          {/* Changed: Added subtitle emphasizing fresh recommendations */}
+          <p className="text-center text-gray-600 mb-6">
+            Fresh recommendations based on your latest upload
+          </p>
+          
+          <div className="grid md:grid-cols-3 gap-6">
+            {recommendations.slice(0, visibleCount).map((book, index) => (
+              <div
+                key={index}
+                className="bg-white p-6 rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-200 hover:scale-105 animate-fade-in"
+                style={{ animationDelay: `${index * 100}ms` }}
               >
-                View on Amazon
-                <ExternalLink className="w-4 h-4" />
-              </a>
-            </div>
-          ))}
+                <div className="mb-4">
+                  <Book className="w-12 h-12 text-blue-600" />
+                </div>
+                
+                <h4 className="text-xl font-bold text-gray-900 mb-2">
+                  {book.title}
+                </h4>
+                
+                <p className="text-gray-600 mb-2">
+                  by {book.author}
+                </p>
+                
+                <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium mb-4">
+                  {book.genre}
+                </span>
+                
+                <p className="text-sm text-gray-700 leading-relaxed mb-6">
+                  {book.reasoning}
+                </p>
+                
+                <a
+                  href={book.amazonUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 w-full justify-center bg-amber-500 hover:bg-amber-600 
+                             text-white px-4 py-3 rounded-lg font-medium transition-colors duration-200"
+                >
+                  View on Amazon
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="text-center p-8 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-yellow-800 font-medium mb-2">
+            Analysis complete, but we couldn't generate recommendations this time.
+          </p>
+          <p className="text-yellow-700 text-sm">
+            Try uploading another photo with a clearer view of your book collection.
+          </p>
+        </div>
+      )}
 
       {/* Upload Another Section */}
       <div className="text-center py-8">

@@ -1,5 +1,7 @@
 import { createBucketClient } from '@cosmicjs/sdk'
 import type { CosmicMedia, CosmicAIAnalysisResponse, CosmicAIGenerationResponse, BookRecommendation } from '@/types'
+import { isValidISBN } from './validators'
+import { withRetry } from './retry'
 
 export const cosmic = createBucketClient({
   bucketSlug: process.env.COSMIC_BUCKET_SLUG as string,
@@ -60,10 +62,11 @@ export async function uploadAndAnalyzeBooks(file: File): Promise<{
       }
     })
     
-    // Step 2: Use Cosmic AI to analyze the image with enhanced prompting
-    // Changed: Completely rewritten prompt to focus on specific book identification
-    const aiAnalysis = await cosmic.ai.generateText({
-      prompt: `You are a book collection analyzer. Examine this bookshelf image carefully: ${uploadResponse.media.imgix_url || uploadResponse.media.url}
+    // Step 2: Use Cosmic AI to analyze the image with enhanced prompting and retry logic
+    const aiAnalysis = await withRetry(
+      async () => {
+        const response = await cosmic.ai.generateText({
+          prompt: `You are a book collection analyzer. Examine this bookshelf image carefully: ${uploadResponse.media.imgix_url || uploadResponse.media.url}
 
 YOUR PRIMARY TASK: Identify as many SPECIFIC book titles and authors as you can see on the spines.
 
@@ -102,12 +105,17 @@ READER PROFILE:
 
 COLLECTION INSIGHTS:
 [Note any patterns: Do they have complete series? Multiple books by certain authors? A preference for certain publishers or formats? What's MISSING that would complement their collection?]`
-    }) as CosmicAIAnalysisResponse
-    
-    // Validate that we got some text response
-    if (!aiAnalysis.text || aiAnalysis.text.trim().length === 0) {
-      throw new Error('AI analysis returned empty response')
-    }
+        }) as CosmicAIAnalysisResponse
+        
+        // Validate that we got some text response
+        if (!response.text || response.text.trim().length === 0) {
+          throw new Error('AI analysis returned empty response')
+        }
+        
+        return response
+      },
+      { maxRetries: 3, initialDelay: 1000 }
+    )
     
     return {
       photo: uploadResponse.media,
@@ -122,35 +130,40 @@ COLLECTION INSIGHTS:
   }
 }
 
-// Generate book recommendations based on analysis
+// Generate book recommendations based on analysis with retry logic
 export async function generateBookRecommendations(analysisText: string): Promise<BookRecommendation[]> {
   try {
-    // Changed: Completely rewritten prompt to generate highly specific recommendations
-    const recommendationPrompt = await cosmic.ai.generateText({
-      prompt: `You are an expert book recommender. Based on this detailed analysis of a reader's book collection:
+    // Changed: Added retry wrapper for recommendation generation
+    const recommendationPrompt = await withRetry(
+      async () => {
+        return await cosmic.ai.generateText({
+          prompt: `You are an expert book recommender. Based on this detailed analysis of a reader's book collection:
 
 ${analysisText}
 
-Generate 3 HIGHLY SPECIFIC and PERSONALIZED book recommendations that this reader does NOT already have.
+Generate 5 HIGHLY SPECIFIC and PERSONALIZED book recommendations that this reader does NOT already have.
 
 CRITICAL REQUIREMENTS FOR RECOMMENDATIONS:
-1. **Look for author patterns**: If they have multiple books by an author, recommend ANOTHER book by that same author they don't have yet
-2. **Complete the series**: If you see books from a series, recommend the next book in that series
-3. **Similar authors**: If they like Author X, recommend books by authors with similar writing styles
-4. **Fill genre gaps**: If they have lots of fiction but no non-fiction, suggest a great non-fiction book in their interest area
-5. **Match their specific tastes**: Use the EXACT books and authors identified to find perfect matches
+1. **Ensure diversity**: Include books from different sub-genres and time periods (mix of recent and classic)
+2. **Look for author patterns**: If they have multiple books by an author, recommend ANOTHER book by that same author they don't have yet
+3. **Complete the series**: If you see books from a series, recommend the next book in that series
+4. **Similar authors**: If they like Author X, recommend books by authors with similar writing styles
+5. **Fill genre gaps**: If they have lots of fiction but no non-fiction, suggest a great non-fiction book in their interest area
+6. **Match their specific tastes**: Use the EXACT books and authors identified to find perfect matches
 
 RECOMMENDATION STRATEGY:
 - Recommendation 1: Should be from an author already in their collection (if applicable)
 - Recommendation 2: Should be similar to multiple books they have
 - Recommendation 3: Should expand their collection in a complementary direction
+- Recommendation 4: Should be a recent release (last 5 years) that matches their interests
+- Recommendation 5: Should be a classic that fits their reading profile
 
 For each recommendation, provide:
 1. Title: A real, well-known book title that fits their collection perfectly
 2. Author: The full author name
 3. Genre: The primary genre
 4. Reasoning: Explain SPECIFICALLY why this book fits based on the ACTUAL books in their collection (mention specific titles/authors they own)
-5. ISBN: A valid 13-digit ISBN-13 number
+5. ISBN: A valid 13-digit ISBN-13 number (format: 9781234567890)
 
 CRITICAL: Your response MUST be valid JSON matching this exact structure:
 
@@ -162,26 +175,15 @@ CRITICAL: Your response MUST be valid JSON matching this exact structure:
       "genre": "Genre",
       "reasoning": "Since you have [specific books] by [author], you would love this book because [specific connection]. This recommendation is based on your collection of [mention 2-3 specific titles from their shelf].",
       "isbn": "9781234567890"
-    },
-    {
-      "title": "Another Specific Title",
-      "author": "Author Name",
-      "genre": "Genre",
-      "reasoning": "Your collection shows you enjoy [specific genre/theme seen in their books]. This book complements your [specific titles] and fills a gap in your collection.",
-      "isbn": "9781234567890"
-    },
-    {
-      "title": "Third Specific Title",
-      "author": "Author Name",
-      "genre": "Genre",
-      "reasoning": "Based on your interest in [authors/series from their collection], this book is a perfect next read. It shares themes with [specific books they own].",
-      "isbn": "9781234567890"
     }
   ]
 }
 
-Ensure the JSON is properly formatted and each reasoning explicitly references books from their collection.`
-    }) as CosmicAIGenerationResponse
+Ensure the JSON is properly formatted and each reasoning explicitly references books from their collection. Provide exactly 5 recommendations.`
+        }) as CosmicAIGenerationResponse
+      },
+      { maxRetries: 3, initialDelay: 1000 }
+    )
     
     // Changed: Enhanced JSON parsing with better error handling
     let parsed: { recommendations: BookRecommendation[] }
@@ -198,10 +200,10 @@ Ensure the JSON is properly formatted and each reasoning explicitly references b
         throw new Error('Invalid recommendations structure')
       }
       
-      // Ensure we have exactly 3 recommendations
-      if (parsed.recommendations.length !== 3) {
-        console.warn(`Expected 3 recommendations, got ${parsed.recommendations.length}`)
-        // Take first 3 or pad with context-aware defaults if needed
+      // Changed: Accept 3-5 recommendations, trim or pad as needed
+      if (parsed.recommendations.length < 3) {
+        console.warn(`Expected at least 3 recommendations, got ${parsed.recommendations.length}`)
+        // Pad with fallback recommendations if needed
         while (parsed.recommendations.length < 3) {
           parsed.recommendations.push({
             title: "Recommended Book",
@@ -212,7 +214,11 @@ Ensure the JSON is properly formatted and each reasoning explicitly references b
             amazonUrl: ""
           })
         }
-        parsed.recommendations = parsed.recommendations.slice(0, 3)
+      }
+      
+      // Take first 5 recommendations if we got more
+      if (parsed.recommendations.length > 5) {
+        parsed.recommendations = parsed.recommendations.slice(0, 5)
       }
       
       // Validate each recommendation has required fields
@@ -229,34 +235,9 @@ Ensure the JSON is properly formatted and each reasoning explicitly references b
       console.error('Failed to parse recommendations JSON:', parseError)
       console.error('Raw response:', recommendationPrompt.text)
       
-      // Changed: Still provide fallback but log that parsing failed
+      // Changed: Return fallback recommendations with note
       console.warn('Using fallback recommendations due to parsing error')
-      return [
-        {
-          title: "The Midnight Library",
-          author: "Matt Haig",
-          genre: "Contemporary Fiction",
-          reasoning: "A thought-provoking novel about choices and possibilities that appeals to readers who enjoy literary fiction with depth.",
-          isbn: "9780525559474",
-          amazonUrl: ""
-        },
-        {
-          title: "Atomic Habits",
-          author: "James Clear",
-          genre: "Self-Help",
-          reasoning: "A practical guide to building better habits, perfect for readers interested in personal development and productivity.",
-          isbn: "9780735211292",
-          amazonUrl: ""
-        },
-        {
-          title: "The Seven Husbands of Evelyn Hugo",
-          author: "Taylor Jenkins Reid",
-          genre: "Historical Fiction",
-          reasoning: "A captivating story with rich characters and emotional depth that appeals to readers who enjoy character-driven narratives.",
-          isbn: "9781501161933",
-          amazonUrl: ""
-        }
-      ]
+      return getFallbackRecommendations()
     }
     
     return parsed.recommendations
@@ -265,39 +246,51 @@ Ensure the JSON is properly formatted and each reasoning explicitly references b
     
     // Changed: Return fallback recommendations with note
     console.warn('Using fallback recommendations due to generation error')
-    return [
-      {
-        title: "The Midnight Library",
-        author: "Matt Haig",
-        genre: "Contemporary Fiction",
-        reasoning: "A thought-provoking novel about choices and possibilities that appeals to readers who enjoy literary fiction with depth.",
-        isbn: "9780525559474",
-        amazonUrl: ""
-      },
-      {
-        title: "Atomic Habits",
-        author: "James Clear",
-        genre: "Self-Help",
-        reasoning: "A practical guide to building better habits, perfect for readers interested in personal development and productivity.",
-        isbn: "9780735211292",
-        amazonUrl: ""
-      },
-      {
-        title: "The Seven Husbands of Evelyn Hugo",
-        author: "Taylor Jenkins Reid",
-        genre: "Historical Fiction",
-        reasoning: "A captivating story with rich characters and emotional depth that appeals to readers who enjoy character-driven narratives.",
-        isbn: "9781501161933",
-        amazonUrl: ""
-      }
-    ]
+    return getFallbackRecommendations()
   }
 }
 
-// Generate Amazon affiliate link for a book
+// Fallback recommendations helper
+function getFallbackRecommendations(): BookRecommendation[] {
+  return [
+    {
+      title: "The Midnight Library",
+      author: "Matt Haig",
+      genre: "Contemporary Fiction",
+      reasoning: "A thought-provoking novel about choices and possibilities that appeals to readers who enjoy literary fiction with depth.",
+      isbn: "9780525559474",
+      amazonUrl: ""
+    },
+    {
+      title: "Atomic Habits",
+      author: "James Clear",
+      genre: "Self-Help",
+      reasoning: "A practical guide to building better habits, perfect for readers interested in personal development and productivity.",
+      isbn: "9780735211292",
+      amazonUrl: ""
+    },
+    {
+      title: "The Seven Husbands of Evelyn Hugo",
+      author: "Taylor Jenkins Reid",
+      genre: "Historical Fiction",
+      reasoning: "A captivating story with rich characters and emotional depth that appeals to readers who enjoy character-driven narratives.",
+      isbn: "9781501161933",
+      amazonUrl: ""
+    }
+  ]
+}
+
+// Generate Amazon affiliate link for a book with ISBN validation
 export function generateAmazonLink(isbn: string, affiliateTag?: string): string {
   // Remove any dashes from ISBN
-  const cleanIsbn = isbn.replace(/-/g, '')
+  const cleanIsbn = isbn.replace(/[-\s]/g, '')
+  
+  // Changed: Validate ISBN before generating link
+  if (!isValidISBN(cleanIsbn)) {
+    // Fallback to search if invalid ISBN
+    console.warn(`Invalid ISBN: ${isbn}, using search instead`)
+    return `https://www.amazon.com/s?k=${encodeURIComponent(isbn)}`
+  }
   
   // Use affiliate tag if provided, otherwise use a default
   const tag = affiliateTag || process.env.AMAZON_AFFILIATE_TAG || 'cosmicjs-20'
