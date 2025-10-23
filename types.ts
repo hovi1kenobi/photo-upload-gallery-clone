@@ -35,6 +35,7 @@ export interface BookAnalysis {
   raw_analysis: string;
 }
 
+// Changed: Enhanced BookRecommendation interface with new analytical fields
 export interface BookRecommendation {
   title: string;
   author: string;
@@ -42,6 +43,11 @@ export interface BookRecommendation {
   reasoning: string;
   isbn: string;
   amazonUrl: string;
+  // New fields for enhanced recommendations
+  connection_strength?: string; // "Strong", "Moderate", or "Exploratory"
+  fills_gap?: string; // Description of what gap this fills, or "No"
+  collection_evidence?: string[]; // Specific books from their collection that support this recommendation
+  recommendation_strategy?: string; // Overall strategy explanation (only on first recommendation)
 }
 
 export interface RecommendationResponse {

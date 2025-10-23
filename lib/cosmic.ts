@@ -62,49 +62,120 @@ export async function uploadAndAnalyzeBooks(file: File): Promise<{
       }
     })
     
-    // Step 2: Use Cosmic AI to analyze the image with enhanced prompting and retry logic
+    // Step 2: Use Cosmic AI to analyze the image with ENHANCED multi-metric prompting
     const aiAnalysis = await withRetry(
       async () => {
         const response = await cosmic.ai.generateText({
-          prompt: `You are a book collection analyzer. Examine this bookshelf image carefully: ${uploadResponse.media.imgix_url || uploadResponse.media.url}
+          prompt: `You are an expert book collection analyzer with deep knowledge of literature, reading patterns, and bibliographic analysis. Examine this bookshelf image carefully: ${uploadResponse.media.imgix_url || uploadResponse.media.url}
 
-YOUR PRIMARY TASK: Identify as many SPECIFIC book titles and authors as you can see on the spines.
+YOUR PRIMARY MISSION: Conduct a comprehensive, multi-dimensional analysis of this reader's book collection to understand their reading preferences at a deep level.
 
-IMPORTANT INSTRUCTIONS:
-1. Look closely at each book spine and try to read the exact title and author
-2. List each book you can identify with "Title by Author" format
-3. If you can only see part of a title or author name, make your best educated guess
-4. Look for patterns: multiple books by the same author, books in a series, genre clusters
-5. Note the approximate number of books even if you can't read all titles
-6. Identify the overall genres and themes based on what you can see
+📊 ANALYSIS FRAMEWORK - Consider ALL of these metrics:
 
-Provide your analysis in this EXACT format:
+1. **BOOK IDENTIFICATION** (Most Critical)
+   - Read every visible book spine carefully
+   - List SPECIFIC titles and authors you can identify
+   - Make educated guesses for partially visible titles
+   - Note approximate total number of books visible
+
+2. **AUTHOR PATTERNS**
+   - Which authors appear multiple times?
+   - Are there author "collections" (3+ books by same author)?
+   - Any debut authors vs established names?
+
+3. **GENRE DISTRIBUTION**
+   - Primary genres represented (Fiction, Non-fiction, Mystery, Sci-Fi, etc.)
+   - Genre balance (80% fiction, 20% non-fiction, etc.)
+   - Sub-genre preferences (hard sci-fi vs space opera, literary vs commercial fiction)
+
+4. **SERIES VS STANDALONE**
+   - Are there complete series? Incomplete series?
+   - Preference for series or standalone books?
+   - Which series are in progress?
+
+5. **PUBLICATION ERA PREFERENCES**
+   - Classic literature vs contemporary releases?
+   - Balance between recent (last 5 years) and older books?
+   - Any vintage or antique editions?
+
+6. **THEMATIC PATTERNS**
+   - Recurring themes (family, adventure, coming-of-age, social issues)
+   - Philosophical or intellectual interests
+   - Emotional tone preferences (dark, uplifting, contemplative)
+
+7. **READING LEVEL & COMPLEXITY**
+   - Literary fiction vs commercial fiction?
+   - Dense/challenging vs accessible reads?
+   - Award winners or bestsellers?
+
+8. **FORMAT & PHYSICAL CHARACTERISTICS**
+   - Hardcover vs paperback preference?
+   - Book condition (well-read vs pristine)?
+   - Size preferences (pocket books, trade paperbacks, coffee table books)?
+
+9. **CULTURAL & GEOGRAPHICAL PREFERENCES**
+   - Authors from specific countries or cultures?
+   - Translated works?
+   - Diverse voices representation?
+
+10. **COMPLETION PATTERNS**
+    - Are series started but not finished?
+    - Evidence of "completionist" tendencies?
+    - Abandoned series or authors?
+
+PROVIDE YOUR ANALYSIS IN THIS EXACT FORMAT:
 
 BOOKS IDENTIFIED:
-- [Title] by [Author]
-- [Title] by [Author]
-(List as many specific books as you can identify - aim for at least 5-10 if visible)
+- [Exact Title] by [Full Author Name]
+- [Exact Title] by [Full Author Name]
+(List EVERY book you can identify - aim for 10-20+ if possible. Be specific!)
 
 AUTHORS IN COLLECTION:
-- [Author Name] (appears [X] times)
-- [Author Name] (appears [X] times)
-(List authors you notice have multiple books)
+- [Author Name] - [Number] books (titles: [list them])
+- [Author Name] - [Number] books (titles: [list them])
+(List all repeated authors with their book counts and titles)
 
-GENRES:
-- [Specific Genre]
-- [Specific Genre]
-(List the specific genres you can identify from the books)
+SERIES ANALYSIS:
+- [Series Name] by [Author] - Books [numbers] present, [complete/incomplete]
+- [Series Name] by [Author] - Books [numbers] present, [complete/incomplete]
+(Identify any book series, completion status, and missing volumes)
 
-THEMES:
-- [Specific Theme]
-- [Specific Theme]
-(List themes that emerge from the collection)
+GENRES & SUB-GENRES:
+- [Primary Genre] ([percentage]%) - [specific sub-genres]
+- [Secondary Genre] ([percentage]%) - [specific sub-genres]
+(Provide genre breakdown with estimated percentages)
+
+THEMES & TOPICS:
+- [Major Theme] - seen in [book examples]
+- [Major Theme] - seen in [book examples]
+(List recurring themes with specific book examples)
+
+PUBLICATION ERA ANALYSIS:
+- Classics/Pre-2000: [percentage]% (examples: [titles])
+- 2000-2015: [percentage]% (examples: [titles])
+- 2015-Present: [percentage]% (examples: [titles])
+(Breakdown by publication periods with examples)
+
+READING LEVEL & STYLE:
+[Describe the complexity level, literary vs commercial balance, and writing style preferences based on visible books]
 
 READER PROFILE:
-[Provide a detailed 3-4 sentence analysis of this reader's preferences based on the SPECIFIC books and authors you identified. Mention authors they seem to enjoy, genres they gravitate toward, and what kind of reader they appear to be.]
+[Provide a comprehensive 4-6 sentence analysis that synthesizes ALL the above metrics. Mention:
+- Their core reading identity (what type of reader are they?)
+- Top 3 strongest preferences based on evidence
+- Reading patterns and habits
+- What makes their collection unique
+- Their likely next reading interests]
 
-COLLECTION INSIGHTS:
-[Note any patterns: Do they have complete series? Multiple books by certain authors? A preference for certain publishers or formats? What's MISSING that would complement their collection?]`
+COLLECTION GAPS & OPPORTUNITIES:
+[Identify 3-5 specific gaps or opportunities in their collection:
+- Missing books in incomplete series
+- Underrepresented genres that would complement their interests
+- Authors they'd likely enjoy but haven't discovered
+- Themes that are emerging but underdeveloped]
+
+RECOMMENDATION STRATEGY:
+[In 2-3 sentences, explain what approach would work best for recommending to this reader based on all analysis above]`
         }) as CosmicAIAnalysisResponse
         
         // Validate that we got some text response
@@ -130,63 +201,109 @@ COLLECTION INSIGHTS:
   }
 }
 
-// Generate book recommendations based on analysis with retry logic
+// Changed: DRAMATICALLY enhanced recommendation generation with multi-metric decision making
 export async function generateBookRecommendations(analysisText: string): Promise<BookRecommendation[]> {
   try {
-    // Changed: Added retry wrapper for recommendation generation
     const recommendationPrompt = await withRetry(
       async () => {
         return await cosmic.ai.generateText({
-          prompt: `You are an expert book recommender. Based on this detailed analysis of a reader's book collection:
+          prompt: `You are a master book curator and recommendation specialist with expertise in reader psychology, literary connections, and personalized curation. You have just received a COMPREHENSIVE analysis of a reader's book collection.
 
+📚 READER'S COLLECTION ANALYSIS:
 ${analysisText}
 
-Generate 5 HIGHLY SPECIFIC and PERSONALIZED book recommendations that this reader does NOT already have.
+🎯 YOUR MISSION: Generate 5 EXCEPTIONALLY PERSONALIZED book recommendations using a sophisticated, multi-metric decision framework.
 
-CRITICAL REQUIREMENTS FOR RECOMMENDATIONS:
-1. **Ensure diversity**: Include books from different sub-genres and time periods (mix of recent and classic)
-2. **Look for author patterns**: If they have multiple books by an author, recommend ANOTHER book by that same author they don't have yet
-3. **Complete the series**: If you see books from a series, recommend the next book in that series
-4. **Similar authors**: If they like Author X, recommend books by authors with similar writing styles
-5. **Fill genre gaps**: If they have lots of fiction but no non-fiction, suggest a great non-fiction book in their interest area
-6. **Match their specific tastes**: Use the EXACT books and authors identified to find perfect matches
+🔍 RECOMMENDATION DECISION FRAMEWORK:
 
-RECOMMENDATION STRATEGY:
-- Recommendation 1: Should be from an author already in their collection (if applicable)
-- Recommendation 2: Should be similar to multiple books they have
-- Recommendation 3: Should expand their collection in a complementary direction
-- Recommendation 4: Should be a recent release (last 5 years) that matches their interests
-- Recommendation 5: Should be a classic that fits their reading profile
+For EACH recommendation, you MUST consider and document these factors:
 
-For each recommendation, provide:
-1. Title: A real, well-known book title that fits their collection perfectly
-2. Author: The full author name
-3. Genre: The primary genre
-4. Reasoning: Explain SPECIFICALLY why this book fits based on the ACTUAL books in their collection (mention specific titles/authors they own)
-5. ISBN: A valid 13-digit ISBN-13 number (format: 9781234567890)
+1. **COLLECTION CONNECTION STRENGTH** (Weight: 35%)
+   - Which SPECIFIC books in their collection influenced this choice?
+   - How many connection points exist? (author, genre, theme, style)
+   - Is this a strong match (3+ connections) or exploratory (1-2 connections)?
 
-CRITICAL: Your response MUST be valid JSON matching this exact structure:
+2. **READER PREFERENCE ALIGNMENT** (Weight: 25%)
+   - Genre fit: Does this match their primary genres or expand tastefully?
+   - Complexity match: Same reading level as their collection?
+   - Theme resonance: Connects to their identified themes?
+   - Writing style: Similar to authors they enjoy?
+
+3. **STRATEGIC CURATION** (Weight: 20%)
+   - Does this fill a gap in their collection?
+   - Complete a series they've started?
+   - Introduce a logical next step in their reading journey?
+   - Balance between familiar and new territory?
+
+4. **TIMING & RELEVANCE** (Weight: 10%)
+   - Is this book currently available and relevant?
+   - Publication timing (classic vs recent)?
+   - Critical acclaim and reader reception?
+
+5. **DIVERSITY & EXPLORATION** (Weight: 10%)
+   - Does the overall set have good variety?
+   - Mix of authors, time periods, perspectives?
+   - Encourages healthy reading exploration?
+
+📋 SPECIFIC RECOMMENDATION RULES:
+
+✅ MUST INCLUDE:
+- At least 1 recommendation from an author already in their collection (if applicable)
+- At least 1 recommendation that completes or continues a series they have (if applicable)
+- At least 1 book from the last 5 years (modern release)
+- At least 1 book that's been widely acclaimed (award winner or bestseller)
+
+✅ RECOMMENDATION MIX STRATEGY:
+- Position 1: "Safe Bet" - Closest to their current collection (90%+ match)
+- Position 2: "Author Match" - From an author they clearly enjoy
+- Position 3: "Genre Bridge" - Similar genre, new author/perspective
+- Position 4: "Complementary Expansion" - Adjacent genre/theme they'd appreciate
+- Position 5: "Curated Surprise" - Unexpected but well-reasoned choice
+
+🎯 CRITICAL: Your "reasoning" field MUST:
+1. Name 2-3 SPECIFIC books from their collection that influenced this choice
+2. Explain the connection mechanism (same author, similar themes, genre match, etc.)
+3. Describe why THIS book fits THEIR reading profile specifically
+4. Mention what new element or value this book brings
+5. Be 3-4 detailed sentences minimum
+
+📊 OUTPUT FORMAT (STRICT JSON):
 
 {
+  "recommendation_strategy": "[2-3 sentence explanation of your overall approach to recommending to THIS specific reader based on their analysis]",
   "recommendations": [
     {
-      "title": "Specific Book Title",
-      "author": "Author Name",
-      "genre": "Genre",
-      "reasoning": "Since you have [specific books] by [author], you would love this book because [specific connection]. This recommendation is based on your collection of [mention 2-3 specific titles from their shelf].",
-      "isbn": "9781234567890"
+      "title": "[Exact book title]",
+      "author": "[Full author name]",
+      "genre": "[Primary genre]",
+      "reasoning": "[DETAILED 3-4 sentence explanation mentioning SPECIFIC books from their collection and explaining multiple connection points. Must demonstrate you analyzed their collection deeply. Example: 'Since you have Project Hail Mary and The Martian by Andy Weir, plus Dune by Frank Herbert, you clearly love hard science fiction with detailed world-building and scientific accuracy. Seveneves by Neal Stephenson is perfect for you because it combines Weir-level scientific detail with Herbert-scale epic scope, featuring realistic near-future space survival scenarios. This book will satisfy your love of technical problem-solving (like Weir) while providing the grand civilization-building narrative you enjoy in Dune.']",
+      "isbn": "[Valid 13-digit ISBN-13]",
+      "connection_strength": "[Strong/Moderate/Exploratory] - [brief explanation]",
+      "fills_gap": "[Yes/No] - [if yes, what gap?]",
+      "collection_evidence": "[List 2-3 specific titles from their shelf that support this recommendation]"
     }
   ]
 }
 
-Ensure the JSON is properly formatted and each reasoning explicitly references books from their collection. Provide exactly 5 recommendations.`
+⚠️ CRITICAL REQUIREMENTS:
+- ALL reasoning must reference SPECIFIC titles from their collection
+- Each recommendation must show clear analytical thought process
+- Demonstrate you understand their reading psychology, not just genres
+- ISBN-13 numbers must be valid and accurate
+- Ensure recommendations span different recommendation types (safe bet, author match, expansion, etc.)
+- The 5 books together should tell a coherent story about understanding this reader
+
+Generate your response now. Be brilliant, be specific, be personal.`
         }) as CosmicAIGenerationResponse
       },
       { maxRetries: 3, initialDelay: 1000 }
     )
     
-    // Changed: Enhanced JSON parsing with better error handling
-    let parsed: { recommendations: BookRecommendation[] }
+    // Changed: Enhanced JSON parsing with support for new fields
+    let parsed: { 
+      recommendation_strategy?: string;
+      recommendations: BookRecommendation[] 
+    }
     
     try {
       // Try to extract JSON from the response (in case there's extra text)
@@ -211,7 +328,10 @@ Ensure the JSON is properly formatted and each reasoning explicitly references b
             genre: "Based on Your Collection",
             reasoning: "This book complements your reading preferences based on your collection.",
             isbn: "9781234567890",
-            amazonUrl: ""
+            amazonUrl: "",
+            connection_strength: "Moderate",
+            fills_gap: "No",
+            collection_evidence: []
           })
         }
       }
@@ -228,8 +348,17 @@ Ensure the JSON is properly formatted and each reasoning explicitly references b
         genre: rec.genre || "General",
         reasoning: rec.reasoning || "A great book that matches your reading preferences.",
         isbn: rec.isbn || "9781234567890",
-        amazonUrl: rec.amazonUrl || ""
+        amazonUrl: rec.amazonUrl || "",
+        connection_strength: rec.connection_strength || "Moderate",
+        fills_gap: rec.fills_gap || "No",
+        collection_evidence: rec.collection_evidence || []
       }))
+      
+      // Store the recommendation strategy for display
+      if (parsed.recommendation_strategy) {
+        // Add strategy to first recommendation for now (will be used in UI)
+        (parsed.recommendations[0] as any).recommendation_strategy = parsed.recommendation_strategy
+      }
       
     } catch (parseError) {
       console.error('Failed to parse recommendations JSON:', parseError)
@@ -259,7 +388,10 @@ function getFallbackRecommendations(): BookRecommendation[] {
       genre: "Contemporary Fiction",
       reasoning: "A thought-provoking novel about choices and possibilities that appeals to readers who enjoy literary fiction with depth.",
       isbn: "9780525559474",
-      amazonUrl: ""
+      amazonUrl: "",
+      connection_strength: "Moderate",
+      fills_gap: "No",
+      collection_evidence: []
     },
     {
       title: "Atomic Habits",
@@ -267,7 +399,10 @@ function getFallbackRecommendations(): BookRecommendation[] {
       genre: "Self-Help",
       reasoning: "A practical guide to building better habits, perfect for readers interested in personal development and productivity.",
       isbn: "9780735211292",
-      amazonUrl: ""
+      amazonUrl: "",
+      connection_strength: "Moderate",
+      fills_gap: "No",
+      collection_evidence: []
     },
     {
       title: "The Seven Husbands of Evelyn Hugo",
@@ -275,7 +410,10 @@ function getFallbackRecommendations(): BookRecommendation[] {
       genre: "Historical Fiction",
       reasoning: "A captivating story with rich characters and emotional depth that appeals to readers who enjoy character-driven narratives.",
       isbn: "9781501161933",
-      amazonUrl: ""
+      amazonUrl: "",
+      connection_strength: "Moderate",
+      fills_gap: "No",
+      collection_evidence: []
     }
   ]
 }
@@ -333,7 +471,8 @@ export function parseAnalysisText(analysisText: string): {
     } else if (trimmedLine.toUpperCase().includes('READER PROFILE')) {
       currentSection = 'profile'
       continue
-    } else if (trimmedLine.toUpperCase().includes('COLLECTION INSIGHTS')) {
+    } else if (trimmedLine.toUpperCase().includes('COLLECTION INSIGHTS') || 
+               trimmedLine.toUpperCase().includes('RECOMMENDATION STRATEGY')) {
       currentSection = 'insights'
       continue
     }
