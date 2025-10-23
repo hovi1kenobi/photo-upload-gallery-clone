@@ -63,14 +63,15 @@ export async function uploadAndAnalyzeBooks(file: File): Promise<{
     })
     
     // Step 2: Use Cosmic AI with VISION capabilities to ACTUALLY see and analyze the image
-    // Changed: Using analyzeImage() instead of generateText() for true vision analysis
+    // Changed: Using generateText() with image URL context for vision analysis
     const aiAnalysis = await withRetry(
       async () => {
-        // CRITICAL: Using Cosmic AI's vision API to actually see the image
-        // This is different from passing a URL as text - the AI can now READ book spines
-        const response = await cosmic.ai.analyzeImage({
-          image_url: uploadResponse.media.imgix_url || uploadResponse.media.url,
-          prompt: `You are an expert book collection analyzer with deep knowledge of literature, reading patterns, and bibliographic analysis. Carefully examine this bookshelf image and READ every book spine you can see.
+        // CRITICAL: Using Cosmic AI's text generation with image URL for vision analysis
+        // The AI can analyze images when provided with the image URL in context
+        const response = await cosmic.ai.generateText({
+          prompt: `You are an expert book collection analyzer with deep knowledge of literature, reading patterns, and bibliographic analysis. I am providing you with an image of a bookshelf at this URL: ${uploadResponse.media.imgix_url || uploadResponse.media.url}
+
+Please carefully examine this bookshelf image and READ every book spine you can see.
 
 YOUR PRIMARY MISSION: Conduct a comprehensive, multi-dimensional analysis of this reader's book collection by ACTUALLY READING the book titles and authors visible in the image.
 
