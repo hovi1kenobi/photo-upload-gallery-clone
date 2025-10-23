@@ -45,7 +45,7 @@ export async function uploadPhoto(file: File): Promise<CosmicMedia> {
   }
 }
 
-// Upload a photo and analyze it with Cosmic AI
+// 🚨 CRITICAL FIX: Upload a photo and analyze it with Cosmic AI VISION capabilities
 export async function uploadAndAnalyzeBooks(file: File): Promise<{
   photo: CosmicMedia;
   analysis: CosmicAIAnalysisResponse;
@@ -62,120 +62,93 @@ export async function uploadAndAnalyzeBooks(file: File): Promise<{
       }
     })
     
-    // Step 2: Use Cosmic AI to analyze the image with ENHANCED multi-metric prompting
+    // Step 2: Use Cosmic AI with VISION capabilities to ACTUALLY see and analyze the image
+    // Changed: Using analyzeImage() instead of generateText() for true vision analysis
     const aiAnalysis = await withRetry(
       async () => {
-        const response = await cosmic.ai.generateText({
-          prompt: `You are an expert book collection analyzer with deep knowledge of literature, reading patterns, and bibliographic analysis. Examine this bookshelf image carefully: ${uploadResponse.media.imgix_url || uploadResponse.media.url}
+        // CRITICAL: Using Cosmic AI's vision API to actually see the image
+        // This is different from passing a URL as text - the AI can now READ book spines
+        const response = await cosmic.ai.analyzeImage({
+          image_url: uploadResponse.media.imgix_url || uploadResponse.media.url,
+          prompt: `You are an expert book collection analyzer with deep knowledge of literature, reading patterns, and bibliographic analysis. Carefully examine this bookshelf image and READ every book spine you can see.
 
-YOUR PRIMARY MISSION: Conduct a comprehensive, multi-dimensional analysis of this reader's book collection to understand their reading preferences at a deep level.
+YOUR PRIMARY MISSION: Conduct a comprehensive, multi-dimensional analysis of this reader's book collection by ACTUALLY READING the book titles and authors visible in the image.
 
 📊 ANALYSIS FRAMEWORK - Consider ALL of these metrics:
 
-1. **BOOK IDENTIFICATION** (Most Critical)
-   - Read every visible book spine carefully
-   - List SPECIFIC titles and authors you can identify
-   - Make educated guesses for partially visible titles
-   - Note approximate total number of books visible
+1. **BOOK IDENTIFICATION** (Most Critical - ACTUALLY READ THE SPINES)
+   - READ every visible book spine carefully - look for text on book spines
+   - List SPECIFIC titles and authors you can ACTUALLY SEE in the image
+   - If you can read partial titles, make educated guesses based on what's visible
+   - Note the approximate total number of books visible in the photo
+   - DO NOT make up books - only list what you can actually see or reasonably infer
 
 2. **AUTHOR PATTERNS**
-   - Which authors appear multiple times?
-   - Are there author "collections" (3+ books by same author)?
-   - Any debut authors vs established names?
+   - Which authors appear multiple times based on what you can READ?
+   - Are there author "collections" (3+ books by same author) visible?
+   - Any debut authors vs established names you can identify?
 
 3. **GENRE DISTRIBUTION**
-   - Primary genres represented (Fiction, Non-fiction, Mystery, Sci-Fi, etc.)
-   - Genre balance (80% fiction, 20% non-fiction, etc.)
-   - Sub-genre preferences (hard sci-fi vs space opera, literary vs commercial fiction)
+   - Primary genres represented based on visible books (Fiction, Non-fiction, Mystery, Sci-Fi, etc.)
+   - Genre balance estimation from visual inspection
+   - Sub-genre preferences based on book covers and spines
 
 4. **SERIES VS STANDALONE**
-   - Are there complete series? Incomplete series?
-   - Preference for series or standalone books?
-   - Which series are in progress?
+   - Can you identify complete or incomplete series from spine text?
+   - Look for numbered volumes or series indicators
+   - Which series are in progress based on what's visible?
 
 5. **PUBLICATION ERA PREFERENCES**
-   - Classic literature vs contemporary releases?
-   - Balance between recent (last 5 years) and older books?
-   - Any vintage or antique editions?
+   - Classic literature vs contemporary releases based on cover design?
+   - Vintage or antique editions visible?
 
-6. **THEMATIC PATTERNS**
-   - Recurring themes (family, adventure, coming-of-age, social issues)
-   - Philosophical or intellectual interests
-   - Emotional tone preferences (dark, uplifting, contemplative)
-
-7. **READING LEVEL & COMPLEXITY**
-   - Literary fiction vs commercial fiction?
-   - Dense/challenging vs accessible reads?
-   - Award winners or bestsellers?
-
-8. **FORMAT & PHYSICAL CHARACTERISTICS**
-   - Hardcover vs paperback preference?
+6. **PHYSICAL CHARACTERISTICS**
+   - Hardcover vs paperback from visual inspection?
    - Book condition (well-read vs pristine)?
-   - Size preferences (pocket books, trade paperbacks, coffee table books)?
-
-9. **CULTURAL & GEOGRAPHICAL PREFERENCES**
-   - Authors from specific countries or cultures?
-   - Translated works?
-   - Diverse voices representation?
-
-10. **COMPLETION PATTERNS**
-    - Are series started but not finished?
-    - Evidence of "completionist" tendencies?
-    - Abandoned series or authors?
+   - Size variations (pocket books, trade paperbacks, coffee table books)?
 
 PROVIDE YOUR ANALYSIS IN THIS EXACT FORMAT:
 
 BOOKS IDENTIFIED:
-- [Exact Title] by [Full Author Name]
-- [Exact Title] by [Full Author Name]
-(List EVERY book you can identify - aim for 10-20+ if possible. Be specific!)
+- [Exact Title you can READ] by [Author Name you can READ]
+- [Exact Title you can READ] by [Author Name you can READ]
+(List ONLY books you can actually see or confidently identify from the image - be honest about what's readable vs unclear)
 
 AUTHORS IN COLLECTION:
-- [Author Name] - [Number] books (titles: [list them])
-- [Author Name] - [Number] books (titles: [list them])
-(List all repeated authors with their book counts and titles)
+- [Author Name] - [Number] books visible (titles: [list them])
+(List only authors you can actually identify from readable spines)
 
 SERIES ANALYSIS:
-- [Series Name] by [Author] - Books [numbers] present, [complete/incomplete]
-- [Series Name] by [Author] - Books [numbers] present, [complete/incomplete]
-(Identify any book series, completion status, and missing volumes)
+- [Series Name if visible] by [Author] - Books [numbers if visible] present
+(Only include series you can actually identify from the image)
 
 GENRES & SUB-GENRES:
-- [Primary Genre] ([percentage]%) - [specific sub-genres]
-- [Secondary Genre] ([percentage]%) - [specific sub-genres]
-(Provide genre breakdown with estimated percentages)
+- [Genre based on visible books] ([estimated %]) - [specific sub-genres]
+(Base this on books you can actually see and identify)
 
 THEMES & TOPICS:
-- [Major Theme] - seen in [book examples]
-- [Major Theme] - seen in [book examples]
-(List recurring themes with specific book examples)
+- [Theme] - seen in [specific visible book examples]
+(Base themes on books you actually identified)
 
 PUBLICATION ERA ANALYSIS:
-- Classics/Pre-2000: [percentage]% (examples: [titles])
-- 2000-2015: [percentage]% (examples: [titles])
-- 2015-Present: [percentage]% (examples: [titles])
-(Breakdown by publication periods with examples)
+- Classics/Pre-2000: [estimated %] (examples: [visible titles])
+- 2000-2015: [estimated %] (examples: [visible titles])  
+- 2015-Present: [estimated %] (examples: [visible titles])
+(Base estimates on cover designs and any visible publication dates)
 
-READING LEVEL & STYLE:
-[Describe the complexity level, literary vs commercial balance, and writing style preferences based on visible books]
+VISUAL OBSERVATIONS:
+[Describe what you can actually see in the image: shelf arrangement, book density, cover colors, spine text legibility, overall organization, etc.]
 
 READER PROFILE:
-[Provide a comprehensive 4-6 sentence analysis that synthesizes ALL the above metrics. Mention:
-- Their core reading identity (what type of reader are they?)
-- Top 3 strongest preferences based on evidence
-- Reading patterns and habits
-- What makes their collection unique
-- Their likely next reading interests]
+[Provide a comprehensive 4-6 sentence analysis based ONLY on the books you could actually identify in the image. Be clear about confidence level - mention if many spines were illegible.]
 
 COLLECTION GAPS & OPPORTUNITIES:
-[Identify 3-5 specific gaps or opportunities in their collection:
-- Missing books in incomplete series
-- Underrepresented genres that would complement their interests
-- Authors they'd likely enjoy but haven't discovered
-- Themes that are emerging but underdeveloped]
+[Based on what you could actually see and identify, suggest 3-5 specific gaps or opportunities]
 
 RECOMMENDATION STRATEGY:
-[In 2-3 sentences, explain what approach would work best for recommending to this reader based on all analysis above]`
+[In 2-3 sentences, explain what approach would work best for recommending to this reader based on the ACTUAL books you identified in the image]
+
+IMPORTANT: Be honest about image quality and readability. If you can't read most spines clearly, say so. Only list books you can actually identify with reasonable confidence.`
         }) as CosmicAIAnalysisResponse
         
         // Validate that we got some text response
@@ -472,7 +445,8 @@ export function parseAnalysisText(analysisText: string): {
       currentSection = 'profile'
       continue
     } else if (trimmedLine.toUpperCase().includes('COLLECTION INSIGHTS') || 
-               trimmedLine.toUpperCase().includes('RECOMMENDATION STRATEGY')) {
+               trimmedLine.toUpperCase().includes('RECOMMENDATION STRATEGY') ||
+               trimmedLine.toUpperCase().includes('VISUAL OBSERVATIONS')) {
       currentSection = 'insights'
       continue
     }
@@ -493,7 +467,7 @@ export function parseAnalysisText(analysisText: string): {
       } else if (currentSection === 'themes' && !trimmedLine.toUpperCase().includes('READER')) {
         const cleaned = trimmedLine.replace(/^[-•*]\s*/, '').replace(/^\d+\.\s*/, '')
         if (cleaned.length > 0) themes.push(cleaned)
-      } else if (currentSection === 'profile' && !trimmedLine.toUpperCase().includes('COLLECTION')) {
+      } else if (currentSection === 'profile' && !trimmedLine.toUpperCase().includes('COLLECTION') && !trimmedLine.toUpperCase().includes('VISUAL')) {
         reader_profile += trimmedLine + ' '
       }
       // insights section is used by AI but we don't parse it separately
